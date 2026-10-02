@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>李煜一生 · 交互时间线</title>
+<style>
+  :root {
+    --ink: #e8e2d4;
+    --ink-light: #9a8f82;
+    --gold: #e8c96a;
+    --gold-deep: #b8860b;
+    --crimson: #e88a8a;
+    --crimson-deep: #8b3a3a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    background: #06080f;
+  }
+
+  body {
+    font-family: "Songti SC", "SimSun", "Noto Serif SC", serif;
+    color: var(--ink);
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  .starfield {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .view {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    width: 100%;
+    transition: opacity 0.6s ease;
+  }
+  .view.hidden {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+  }
+  .view.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ===== 时间线页 ===== */
+  .tl-header {
+    text-align: center;
+    padding: 56px 24px 36px;
+  }
+  .tl-header h1 {
+    font-size: clamp(26px, 4.5vw, 38px);
+    font-weight: 400;
+    letter-spacing: 8px;
+    color: #f5ecd7;
+    text-shadow: 0 0 20px rgba(184,134,11,0.8), 0 0 40px rgba(184,134,11,0.4);
+  }
+  .tl-header p {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--ink-light);
+    letter-spacing: 3px;
+  }
+  .tl-header .hint {
+    margin-top: 18px;
+    display: inline-block;
+    padding: 6px 18px;
+    border: 1px solid rgba(184,134,11,0.5);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .timeline-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 24px 80px;
+  }
+  .timeline { position: relative; padding: 40px 0; }
+
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg,
+      var(--gold) 0%, var(--gold) 45%,
+      var(--crimson) 55%, var(--crimson) 100%);
+    transform: translateX(-50%);
+    box-shadow: 0 0 16px rgba(184,134,11,0.6);
+  }
+
+  .node {
+    position: relative;
+    width: 50%;
+    cursor: pointer;
+    animation: fadeIn 0.8s ease both;
+  }
+  .node:nth-child(odd) { left: 0; text-align: right; padding: 0 40px 40px 0; }
+  .node:nth-child(even) { left: 50%; text-align: left; padding: 0 0 40px 40px; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .node::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff8e0;
+    border: 2px solid rgba(255,255,255,0.6);
+    box-shadow: 0 0 12px 3px rgba(255, 220, 120, 0.8), 0 0 24px 8px rgba(255, 200, 80, 0.35);
+    transition: all 0.4s;
+    z-index: 2;
+    animation: pulse 3s ease-in-out infinite;
+  }
+  .node:nth-child(odd)::after { right: -8px; }
+  .node:nth-child(even)::after { left: -8px; }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+
+  .node.late::after {
+    background: #ffd9d9;
+    box-shadow: 0 0 12px 3px rgba(255, 120, 120, 0.8), 0 0 24px 8px rgba(220, 80, 80, 0.35);
+  }
+
+  .node:hover::after {
+    box-shadow: 0 0 20px 6px rgba(255, 220, 120, 1), 0 0 40px 14px rgba(255, 200, 80, 0.5);
+    transform: scale(1.4);
+    animation: none;
+  }
+  .node.late:hover::after {
+    box-shadow: 0 0 20px 6px rgba(255, 120, 120, 1), 0 0 40px 14px rgba(220, 80, 80, 0.5);
+  }
+
+  .node-card {
+    display: inline-block;
+    background: rgba(20, 26, 42, 0.7);
+    border: 1px solid rgba(184,134,11,0.35);
+    border-radius: 6px;
+    padding: 16px 20px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    transition: all 0.4s;
+    max-width: 100%;
+    backdrop-filter: blur(6px);
+  }
+  .node:hover .node-card {
+    transform: translateY(-3px);
+    border-color: var(--gold);
+    box-shadow: 0 0 24px rgba(184,134,11,0.35), 0 6px 24px rgba(0,0,0,0.5);
+  }
+  .node.late:hover .node-card {
+    border-color: var(--crimson);
+    box-shadow: 0 0 24px rgba(220, 80, 80, 0.35), 0 6px 24px rgba(0,0,0,0.5);
+  }
+
+  .node-year {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 2px;
+  }
+  .node.late .node-year { color: var(--crimson); }
+  .node-age {
+    font-size: 12px;
+    color: var(--ink-light);
+    margin-left: 8px;
+    letter-spacing: 1px;
+  }
+  .node-title {
+    font-size: 15px;
+    margin-top: 4px;
+    color: var(--ink);
+    letter-spacing: 1px;
+  }
+  .node-hint {
+    font-size: 12px;
+    color: var(--ink-light);
+    margin-top: 6px;
+    letter-spacing: 1px;
+    opacity: 0.7;
+  }
+
+  /* ===== 详情页 ===== */
+  .detail-content {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(184,134,11,0.4);
+    border-radius: 999px;
+    color: var(--gold);
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s;
+    backdrop-filter: blur(6px);
+    margin-bottom: 40px;
+  }
+  .back-btn:hover {
+    background: rgba(184,134,11,0.15);
+    border-color: var(--gold);
+    transform: translateX(-3px);
+  }
+
+  .d-year {
+    font-size: clamp(48px, 10vw, 84px);
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(232,201,106,0.6), 0 0 60px rgba(232,201,106,0.3);
+    line-height: 1.1;
+    animation: glowIn 0.8s ease both;
+  }
+  .view-detail.late .d-year {
+    color: var(--crimson);
+    text-shadow: 0 0 30px rgba(232,138,138,0.6), 0 0 60px rgba(232,138,138,0.3);
+  }
+  @keyframes glowIn {
+    from { opacity: 0; filter: blur(8px); }
+    to { opacity: 1; filter: blur(0); }
+  }
+
+  .d-meta {
+    font-size: 14px;
+    color: var(--ink-light);
+    margin-top: 8px;
+    letter-spacing: 2px;
+  }
+
+  .d-title {
+    font-size: clamp(22px, 4vw, 32px);
+    font-weight: 400;
+    margin: 24px 0 8px;
+    letter-spacing: 3px;
+    color: #f5ecd7;
+    animation: fadeUp 0.7s ease 0.1s both;
+  }
+
+  .d-divider {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold-deep), transparent);
+    margin: 24px 0;
+    animation: fadeUp 0.7s ease 0.15s both;
+  }
+  .view-detail.late .d-divider {
+    background: linear-gradient(90deg, var(--crimson-deep), transparent);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 图片展示区 */
+  .d-image {
+    margin: 28px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(184,134,11,0.25);
+    background: rgba(0,0,0,0.3);
+    animation: fadeUp 0.7s ease 0.18s both;
+  }
+  .view-detail.late .d-image {
+    border-color: rgba(139,58,58,0.35);
+  }
+  .d-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .d-image .image-caption {
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.35);
+    font-size: 12px;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    text-align: center;
+    backdrop-filter: blur(6px);
+  }
+  .d-image .image-missing {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--ink-light);
+    font-size: 14px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, rgba(184,134,11,0.1), rgba(139,58,58,0.08));
+  }
+
+  .d-body { animation: fadeUp 0.7s ease 0.2s both; }
+  .d-body p {
+    font-size: 16px;
+    margin-bottom: 16px;
+    color: #d8d2c4;
+    line-height: 2;
+  }
+  .d-body strong { color: var(--gold); }
+  .view-detail.late .d-body strong { color: var(--crimson); }
+
+  /* 史料 */
+  .d-source-section {
+    margin-top: 36px;
+    animation: fadeUp 0.7s ease 0.25s both;
+  }
+  .d-source-section .section-label {
+    font-size: 14px;
+    color: var(--gold);
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(184,134,11,0.25);
+  }
+  .view-detail.late .d-source-section .section-label {
+    color: var(--crimson);
+    border-bottom-color: rgba(139,58,58,0.3);
+  }
+
+  .source-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(6px);
+  }
+  .source-item .source-quote {
+    font-size: 15px;
+    line-height: 2.2;
+    color: #f0e6d2;
+    letter-spacing: 0.5px;
+  }
+  .source-item .source-ref {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    opacity: 0.85;
+  }
+  .source-item .source-ref::before {
+    content: "—— ";
+  }
+
+  /* 诗词 */
+  .d-poem {
+    background: rgba(184,134,11,0.1);
+    border-left: 3px solid var(--gold-deep);
+    border-radius: 4px;
+    padding: 22px 26px;
+    margin: 24px 0;
+    backdrop-filter: blur(6px);
+    animation: fadeUp 0.7s ease 0.3s both;
+  }
+  .view-detail.late .d-poem {
+    background: rgba(139,58,58,0.13);
+    border-left-color: var(--crimson-deep);
+  }
+  .d-poem .poem-name {
+    font-size: 16px;
+    color: var(--gold);
+    margin-bottom: 4px;
+    letter-spacing: 2px;
+  }
+  .d-poem .poem-source {
+    font-size: 12px;
+    color: var(--ink-light);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+    opacity: 0.85;
+  }
+  .d-poem .poem-text {
+    font-size: 16px;
+    line-height: 2.4;
+    letter-spacing: 1px;
+    color: #f0e6d2;
+  }
+
+  /* 导航 */
+  .d-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    animation: fadeUp 0.7s ease 0.4s both;
+  }
+  .d-nav button {
+    flex: 1;
+    padding: 14px 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #d8d2c4;
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+  }
+  .d-nav button:hover:not(:disabled) {
+    background: rgba(184,134,11,0.12);
+    border-color: rgba(184,134,11,0.5);
+    color: var(--gold);
+  }
+  .d-nav button.next { text-align: right; }
+  .d-nav button .nav-label {
+    display: block;
+    font-size: 11px;
+    color: #6a6258;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .d-nav button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 640px) {
+    .timeline::before { left: 20px; }
+    .node,
+    .node:nth-child(odd),
+    .node:nth-child(even) {
+      width: 100%;
+      left: 0;
+      text-align: left;
+      padding: 0 0 32px 52px;
+    }
+    .node:nth-child(odd)::after,
+    .node:nth-child(even)::after {
+      left: 12px;
+      right: auto;
+    }
+    .detail-content { padding: 28px 20px 60px; }
+    .d-nav { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<canvas class="starfield" id="starfield"></canvas>
+
+<div class="view active" id="view-timeline">
+  <div class="tl-header">
+    <h1>李 煜 一 生</h1>
+    <p>937 — 978 · 从帝王到囚徒</p>
+    <span class="hint">点击任意时间节点，进入那一年</span>
+  </div>
+  <div class="timeline-section">
+    <div class="timeline" id="timeline"></div>
+  </div>
+</div>
+
+<div class="view hidden" id="view-detail">
+  <div class="detail-content">
+    <button class="back-btn" id="backBtn">← 返回时间线</button>
+    <div class="d-year" id="dYear"></div>
+    <div class="d-meta" id="dMeta"></div>
+    <div class="d-title" id="dTitle"></div>
+    <div class="d-divider"></div>
+    <div class="d-image" id="dImage"></div>
+    <div class="d-body" id="dBody"></div>
+    <div class="d-source-section" id="dSourceSection">
+      <div class="section-label">史料原文</div>
+      <div id="dSources"></div>
+    </div>
+    <div id="dPoemContainer"></div>
+    <div class="d-nav">
+      <button id="prevBtn">
+        <span class="nav-label">上一个</span>
+        <span id="prevText">—</span>
+      </button>
+      <button class="next" id="nextBtn">
+        <span class="nav-label">下一个</span>
+        <span id="nextText">—</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= 星空 Canvas =================
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [];
+let shootingStars = [];
+let animId = null;
+let running = false;
+
+const nebulas = [
+  { x: 0.25, y: 0.3, r: 0.35 },
+  { x: 0.75, y: 0.65, r: 0.4 },
+  { x: 0.5, y: 0.15, r: 0.25 }
+];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  initStars();
+}
+
+function initStars() {
+  const count = Math.min(300, Math.floor(window.innerWidth * window.innerHeight / 5500));
+  stars = [];
+  for (let i = 0; i < count; i++) {
+    let x, y;
+    if (Math.random() < 0.5) {
+      const neb = nebulas[Math.floor(Math.random() * nebulas.length)];
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.pow(Math.random(), 2) * neb.r;
+      x = (neb.x + Math.cos(angle) * dist) * canvas.width;
+      y = (neb.y + Math.sin(angle) * dist) * canvas.height;
+    } else {
+      x = Math.random() * canvas.width;
+      y = Math.random() * canvas.height;
+    }
+    stars.push({
+      x, y,
+      r: Math.random() * 1.4 + 0.3,
+      baseAlpha: Math.random() * 0.5 + 0.3,
+      twinkleSpeed: Math.random() * 0.02 + 0.005,
+      phase: Math.random() * Math.PI * 2,
+      color: Math.random() < 0.12
+        ? (Math.random() < 0.5 ? '232,201,106' : '232,138,138')
+        : '255,255,255'
+    });
+  }
+}
+
+function spawnShootingStar() {
+  shootingStars.push({
+    x: Math.random() * canvas.width * 0.8,
+    y: Math.random() * canvas.height * 0.4,
+    vx: 6 + Math.random() * 5,
+    vy: 3 + Math.random() * 3,
+    life: 1,
+    len: 80 + Math.random() * 60
+  });
+}
+
+function draw(t) {
+  const grad = ctx.createRadialGradient(
+    canvas.width * 0.5, canvas.height * 0.4, 0,
+    canvas.width * 0.5, canvas.height * 0.4, Math.max(canvas.width, canvas.height) * 0.8
+  );
+  grad.addColorStop(0, '#0b1024');
+  grad.addColorStop(0.5, '#060a16');
+  grad.addColorStop(1, '#03050c');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (const s of stars) {
+    const twinkle = Math.sin(t * s.twinkleSpeed + s.phase) * 0.35 + 0.65;
+    const alpha = s.baseAlpha * twinkle;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${s.color},${alpha})`;
+    ctx.fill();
+    if (s.r > 1.1) {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${s.color},${alpha * 0.1})`;
+      ctx.fill();
+    }
+  }
+
+  for (let i = shootingStars.length - 1; i >= 0; i--) {
+    const m = shootingStars[i];
+    const tailX = m.x - m.vx * (m.len / 10);
+    const tailY = m.y - m.vy * (m.len / 10);
+    const g = ctx.createLinearGradient(m.x, m.y, tailX, tailY);
+    g.addColorStop(0, `rgba(255,240,200,${m.life})`);
+    g.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.beginPath();
+    ctx.moveTo(m.x, m.y);
+    ctx.lineTo(tailX, tailY);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,250,230,${m.life})`;
+    ctx.fill();
+    m.x += m.vx;
+    m.y += m.vy;
+    m.life -= 0.012;
+    if (m.life <= 0 || m.x > canvas.width + 100 || m.y > canvas.height + 100) {
+      shootingStars.splice(i, 1);
+    }
+  }
+}
+
+function loop(t) {
+  if (!running) return;
+  draw(t * 0.06);
+  if (Math.random() < 0.008) spawnShootingStar();
+  animId = requestAnimationFrame(loop);
+}
+
+function startStarfield() {
+  if (running) return;
+  running = true;
+  resizeCanvas();
+  animId = requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', () => {
+  if (running) resizeCanvas();
+});
+
+startStarfield();
+
+// ================= 时间线数据 =================
+// 图片路径：image/ 文件夹里，png 格式，01~10 按顺序对应
+const events = [
+  {
+    year: 937, age: "1岁", title: "生于金陵", meta: "升元元年 · 金陵",
+    img: "image/01.png",
+    body: `<p>李煜出生于南唐都城<strong>金陵</strong>（今江苏南京），是南唐元宗李璟的第六子。原名李从嘉，字重光。</p>
+    <p>据史书记载，他<strong>“丰额骈齿，一目重瞳”</strong>——额头宽阔，牙齿重叠，一只眼睛里有两个瞳孔。在古代相术里，重瞳被视为圣人之相，这让他从小就显得与众不同。</p>
+    <p>他出生时，南唐刚建立十余年，国力尚盛。谁也没想到，这个排行第六的皇子，日后会成为南唐的最后一任君主。</p>`,
+    sources: [
+      { quote: "煜字重光，初名从嘉，景第六子也。煜为人仁孝，善属文，工书画，而丰额骈齿，一目重瞳子。", ref: "《新五代史》卷六十二 · 南唐世家" },
+      { quote: "广额丰颊，骈齿，一目重瞳子。", ref: "《十国春秋》卷十七" }
+    ],
+    poem: null
+  },
+  {
+    year: 943, age: "7岁", title: "祖父李昪去世，父亲李璟即位", meta: "保大元年",
+    img: "image/02.png",
+    body: `<p>李煜的祖父、南唐开国皇帝<strong>李昪</strong>去世，父亲<strong>李璟</strong>即位，是为南唐元宗。</p>
+    <p>李璟雅好文学，词写得极好，著名的<strong>“细雨梦回鸡塞远，小楼吹彻玉笙寒”</strong>就出自他手。这种家庭氛围对年幼的李煜影响深远。</p>
+    <p>不过李璟在位期间，南唐在与后周的战争中失利，被迫去帝号、称国主，国力开始走下坡路。</p>`,
+    sources: [
+      { quote: "元宗明道崇德文宣孝皇帝，名璟，字伯玉，烈祖长子也。", ref: "《新五代史》卷六十二 · 南唐世家" }
+    ],
+    poem: null
+  },
+  {
+    year: 950, age: "14岁", title: "娶大周后娥皇", meta: "约此年前后",
+    img: "image/03.png",
+    body: `<p>李煜迎娶<strong>大周后周娥皇</strong>。娥皇是南唐名臣周宗之女，精通音律、能歌善舞，尤其擅长琵琶。</p>
+    <p>两人的结合不只是政治联姻，更是<strong>艺术上的知音</strong>。传说李煜得到失传已久的《霓裳羽衣曲》残谱，与娥皇一同考证补全，用琵琶重新演奏出来。</p>
+    <p>这段婚姻是李煜一生中最幸福的时光之一，也孕育了他前期那些富丽明快的词作。</p>`,
+    sources: [
+      { quote: "后主昭惠国后周氏，小名娥皇，司徒宗之女。通书史，善歌舞，尤工琵琶。", ref: "陆游《南唐书》卷十六 · 后妃诸王列传" },
+      { quote: "故唐盛时霓裳羽衣，最为大曲，乱离之后，绝不复传，后得残谱以琵琶奏之，于是开元天宝之遗音复传于世。", ref: "陆游《南唐书》卷十六" }
+    ],
+    poem: null
+  },
+  {
+    year: 958, age: "22岁", title: "被立为太子", meta: "中兴元年",
+    img: "image/04.png",
+    body: `<p>李煜被立为<strong>太子</strong>，入住东宫。</p>
+    <p>他本排行第六，按理轮不到他继位。但他的几位兄长先后去世，加上他<strong>“为人仁孝，善属文，工书画”</strong>，深得父亲李璟喜爱，最终被选定为继承人。</p>
+    <p>据记载，李煜其实<strong>并不想当皇帝</strong>。他自号“钟隐”“莲峰居士”，写诗作画，向往隐居生活。但命运没有给他选择的机会。</p>`,
+    sources: [
+      { quote: "显德六年，太子弘冀病逝，钟谟以李从嘉酷信佛教、懦弱少德，上疏请立纪国公李从善为太子。李璟大怒，流放钟谟至饶州，封李从嘉为吴王，以尚书令参与政事，入住东宫。", ref: "《十国春秋》卷十七" }
+    ],
+    poem: null
+  },
+  {
+    year: 961, age: "25岁", title: "即位，成为南唐后主", meta: "建隆二年 · 金陵",
+    img: "image/05.png",
+    body: `<p>父亲李璟去世，李煜在金陵<strong>即位</strong>，成为南唐最后一位君主，史称<strong>“李后主”</strong>。</p>
+    <p>此时南唐已经向北宋称臣，国势衰微。李煜即位后，对宋廷<strong>卑躬屈膝</strong>，年年进贡金帛珠宝，以求一时安宁。</p>
+    <p>他在位十五年，一方面维持着表面的太平，一方面继续沉迷于诗词、音乐与宫廷生活。</p>`,
+    sources: [
+      { quote: "建隆二年，景迁南都，立煜为太子，留监国。", ref: "《新五代史》卷六十二 · 南唐世家" }
+    ],
+    poem: {
+      name: "《玉楼春》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》",
+      text: "晚妆初了明肌雪，春殿嫔娥鱼贯列。\n凤箫吹断水云闲，重按霓裳歌遍彻。\n临风谁更飘香屑，醉拍阑干情味切。\n归时休放烛花红，待踏马蹄清夜月。"
+    }
+  },
+  {
+    year: 964, age: "28岁", title: "大周后病逝", meta: "乾德二年",
+    img: "image/06.png",
+    body: `<p>李煜的妻子<strong>大周后娥皇病逝</strong>，年仅二十九岁。</p>
+    <p>娥皇病重期间，她最疼爱的幼子仲宣又意外夭折。双重打击下，娥皇病情急剧恶化，最终去世。李煜悲痛欲绝，<strong>“哀苦骨立，杖而后起”</strong>。</p>
+    <p>他写下多首悼亡词，字字血泪。这段经历，也让他前期的词风开始出现悲音。</p>`,
+    sources: [
+      { quote: "后疾革，煜哀苦骨立，杖而后起。", ref: "陆游《南唐书》卷十六 · 后妃诸王列传" },
+      { quote: "苍苍何辜，歼予伉俪；绝艳易凋，连城易脆。", ref: "李煜《昭惠周后诔》" }
+    ],
+    poem: null
+  },
+  {
+    year: 968, age: "32岁", title: "立小周后为后", meta: "乾德六年",
+    img: "image/07.png",
+    body: `<p>李煜立<strong>小周后</strong>（娥皇之妹）为皇后。</p>
+    <p>小周后与姐姐一样美貌多才，李煜对她极为宠爱。相传他曾为小周后写下<strong>“刬袜步香阶，手提金缕鞋”</strong>这样的句子，十分生动。</p>
+    <p>但此时南唐的国势已经危在旦夕，北宋的军事压力越来越大。</p>`,
+    sources: [
+      { quote: "开宝元年，始议立后为继室，命太常博士陈致雍，考古今沿革，草具婚礼。", ref: "陆游《南唐书》卷十六" },
+      { quote: "开宝元年，冬十一月，立国后周氏。", ref: "陆游《南唐书》卷三" }
+    ],
+    poem: null
+  },
+  {
+    year: 975, age: "39岁", title: "金陵陷落，被俘北上", meta: "开宝八年 · 人生转折", late: true,
+    img: "image/08.png",
+    body: `<p>宋军攻破<strong>金陵</strong>，南唐灭亡。李煜<strong>被俘</strong>，押送北宋都城汴京。</p>
+    <p>据记载，城破之时李煜正在宫中，与小周后相对而泣。他本欲殉国，却最终没有勇气自尽，选择出降。宋太祖赵匡胤封他为<strong>“违命侯”</strong>。</p>
+    <p>从帝王到囚徒，<strong>“天堂地狱般的落差”</strong>彻底改变了李煜。这一年，成为他人生与词风的分水岭。</p>`,
+    sources: [
+      { quote: "八年冬，城陷，曹彬等驻兵于宫门，煜率其近臣迎拜于门。彬等上露布，以煜并其宰相汤悦等四十五人上献。", ref: "《宋史》卷四百七十八 · 南唐李氏世家" },
+      { quote: "开宝八年十二月，王师克金陵。", ref: "《新五代史》卷六十二" }
+    ],
+    poem: {
+      name: "《破阵子》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》",
+      text: "四十年来家国，三千里地山河。\n凤阁龙楼连霄汉，玉树琼枝作烟萝，几曾识干戈？\n一旦归为臣虏，沈腰潘鬓消磨。\n最是仓皇辞庙日，教坊犹奏别离歌，垂泪对宫娥。"
+    }
+  },
+  {
+    year: 976, age: "40岁", title: "囚居汴京，词作巅峰", meta: "开宝九年", late: true,
+    img: "image/09.png",
+    body: `<p>李煜在汴京过着<strong>囚徒生活</strong>，被封“违命侯”，行动受到监视，精神上极为痛苦。</p>
+    <p>宋太祖赵匡胤去世，其弟赵光义即位，是为宋太宗。李煜的处境更加艰难。</p>
+    <p>也正是在这段囚居岁月里，李煜写出了他一生中<strong>最伟大的作品</strong>：《虞美人》《浪淘沙令》《相见欢》……这些词写尽亡国之痛，将词的境界推向前所未有的高度。</p>`,
+    sources: [
+      { quote: "后主封违命侯，后封妃。", ref: "《江南野史》卷三" }
+    ],
+    poem: {
+      name: "《相见欢》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》",
+      text: "无言独上西楼，月如钩。\n寂寞梧桐深院锁清秋。\n剪不断，理还乱，是离愁。\n别是一般滋味在心头。"
+    }
+  },
+  {
+    year: 978, age: "42岁", title: "七夕被毒，含恨而终", meta: "太平兴国三年 · 绝命之词", late: true,
+    img: "image/10.png",
+    body: `<p>公元978年<strong>七夕</strong>，李煜在汴京寓所命故妓唱《虞美人》。声闻于外，宋太宗赵光义闻之大怒。</p>
+    <p>据宋代王铚《默记》记载，太宗遂赐<strong>牵机药</strong>，李煜服后全身抽搐，头足相就如牵机状，痛苦而死，年仅<strong>四十二岁</strong>。</p>
+    <p>他死之后，小周后悲痛欲绝，不久也去世了。</p>
+    <p>作为帝王，李煜是彻底的失败者；但作为词人，他用生命的代价换来了词的巅峰。王国维说：<strong>“词至李后主而眼界始大，感慨遂深，遂变伶工之词为士大夫之词。”</strong></p>`,
+    sources: [
+      { quote: "太平兴国三年，后主殂，后悲哀不自胜，亦卒。", ref: "陆游《南唐书》卷十六" },
+      { quote: "太平兴国三年六月辛卯殂，年四十二。是日，七夕也，后主盖以是日生。", ref: "陆游《南唐书》卷三" }
+    ],
+    poem: {
+      name: "《虞美人》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》· 绝命词",
+      text: "春花秋月何时了，往事知多少？\n小楼昨夜又东风，故国不堪回首月明中。\n雕栏玉砌应犹在，只是朱颜改。\n问君能有几多愁？恰似一江春水向东流。"
+    }
+  }
+];
+
+// ================= 渲染时间线 =================
+const timeline = document.getElementById('timeline');
+events.forEach((ev, i) => {
+  const node = document.createElement('div');
+  node.className = 'node' + (ev.late ? ' late' : '');
+  node.style.animationDelay = (i * 0.08) + 's';
+  node.innerHTML = `
+    <div class="node-card">
+      <div>
+        <span class="node-year">${ev.year}</span>
+        <span class="node-age">${ev.age}</span>
+      </div>
+      <div class="node-title">${ev.title}</div>
+      <div class="node-hint">点击进入 →</div>
+    </div>`;
+  node.addEventListener('click', () => showDetail(i));
+  timeline.appendChild(node);
+});
+
+// ================= 视图切换 =================
+const viewTimeline = document.getElementById('view-timeline');
+const viewDetail = document.getElementById('view-detail');
+let currentIndex = -1;
+
+function showDetail(index) {
+  if (index < 0 || index >= events.length) return;
+  currentIndex = index;
+  const ev = events[index];
+
+  document.getElementById('dYear').textContent = ev.year;
+  document.getElementById('dMeta').textContent = ev.meta + ' · 时年' + ev.age;
+  document.getElementById('dTitle').textContent = ev.title;
+  document.getElementById('dBody').innerHTML = ev.body;
+
+  // 渲染图片
+  const imageContainer = document.getElementById('dImage');
+  if (ev.img) {
+    imageContainer.innerHTML = `
+      <img src="${ev.img}" alt="${ev.year}年 · ${ev.title}"
+           onerror="this.parentElement.innerHTML='<div class=\\'image-missing\\'>图片未找到：${ev.img}<br><span style=\\'font-size:12px;opacity:0.6;\\'>请确认 image 文件夹与网页在同一目录</span></div>'">
+      <div class="image-caption">${ev.year}年 · ${ev.title}</div>
+    `;
+    imageContainer.style.display = 'block';
+  } else {
+    imageContainer.style.display = 'none';
+  }
+
+  // 渲染史料
+  const sourcesContainer = document.getElementById('dSources');
+  if (ev.sources && ev.sources.length > 0) {
+    sourcesContainer.innerHTML = ev.sources.map(s => `
+      <div class="source-item">
+        <div class="source-quote">${s.quote}</div>
+        <div class="source-ref">${s.ref}</div>
+      </div>
+    `).join('');
+    document.getElementById('dSourceSection').style.display = 'block';
+  } else {
+    document.getElementById('dSourceSection').style.display = 'none';
+  }
+
+  // 渲染诗词
+  const poemContainer = document.getElementById('dPoemContainer');
+  if (ev.poem) {
+    poemContainer.innerHTML = `
+      <div class="d-poem">
+        <div class="poem-name">${ev.poem.name}</div>
+        <div class="poem-source">${ev.poem.source}</div>
+        <div class="poem-text">${ev.poem.text.replace(/\n/g, '<br>')}</div>
+      </div>`;
+  } else {
+    poemContainer.innerHTML = '';
+  }
+
+  viewDetail.classList.toggle('late', !!ev.late);
+
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const prevText = document.getElementById('prevText');
+  const nextText = document.getElementById('nextText');
+
+  if (index > 0) {
+    prevBtn.disabled = false;
+    prevText.textContent = events[index - 1].year + ' · ' + events[index - 1].title;
+  } else {
+    prevBtn.disabled = true;
+    prevText.textContent = '已是起点';
+  }
+
+  if (index < events.length - 1) {
+    nextBtn.disabled = false;
+    nextText.textContent = events[index + 1].year + ' · ' + events[index + 1].title;
+  } else {
+    nextBtn.disabled = true;
+    nextText.textContent = '已是终点';
+  }
+
+  viewTimeline.classList.remove('active');
+  viewTimeline.classList.add('hidden');
+  viewDetail.classList.remove('hidden');
+  viewDetail.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function backToTimeline() {
+  viewDetail.classList.remove('active');
+  viewDetail.classList.add('hidden');
+  viewTimeline.classList.remove('hidden');
+  viewTimeline.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+document.getElementById('backBtn').addEventListener('click', backToTimeline);
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (currentIndex > 0) showDetail(currentIndex - 1);
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if (currentIndex < events.length - 1) showDetail(currentIndex + 1);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && viewDetail.classList.contains('active')) {
+    backToTimeline();
+  }
+});
+</script>
+
+</body>
+</html>

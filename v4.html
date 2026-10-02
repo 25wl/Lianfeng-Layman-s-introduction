@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>李煜一生 · 卷轴星空</title>
+<style>
+  :root {
+    --ink: #e8e2d4;
+    --ink-light: #9a8f82;
+    --gold: #e8c96a;
+    --gold-deep: #b8860b;
+    --crimson: #e88a8a;
+    --crimson-deep: #8b3a3a;
+    --star-glow: rgba(232,201,106,0.8);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    background: #06080f;
+  }
+
+  body {
+    font-family: "Songti SC", "SimSun", "Noto Serif SC", serif;
+    color: var(--ink);
+    line-height: 1.8;
+    overflow-x: hidden;
+  }
+
+  .starfield {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .view {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    width: 100%;
+    transition: opacity 0.6s ease;
+  }
+  .view.hidden {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+  }
+  .view.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ===== 通用头部 ===== */
+  .page-header {
+    text-align: center;
+    padding: 56px 24px 20px;
+  }
+  .page-header h1 {
+    font-size: clamp(26px, 4.5vw, 38px);
+    font-weight: 400;
+    letter-spacing: 8px;
+    color: #f5ecd7;
+    text-shadow: 0 0 20px rgba(184,134,11,0.8), 0 0 40px rgba(184,134,11,0.4);
+  }
+  .page-header p {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--ink-light);
+    letter-spacing: 3px;
+  }
+  .page-header .hint {
+    margin-top: 18px;
+    display: inline-block;
+    padding: 6px 18px;
+    border: 1px solid rgba(184,134,11,0.5);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  /* ===== 视图一：人物关系网 ===== */
+  .network-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px 24px 80px;
+  }
+  .network-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .person-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .person-node .person-circle {
+    transition: all 0.4s ease;
+  }
+  .person-node:hover .person-circle {
+    filter: drop-shadow(0 0 16px var(--star-glow)) drop-shadow(0 0 32px rgba(255,200,80,0.5));
+  }
+  .person-node .person-name {
+    font-size: 13px;
+    font-weight: 700;
+    fill: #f5ecd7;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+  .person-node .person-role {
+    font-size: 10px;
+    fill: #9a8f82;
+    text-anchor: middle;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+  .person-node.center .person-name {
+    fill: #fff8e0;
+    font-size: 16px;
+  }
+  .person-node.center .person-role {
+    fill: #e8c96a;
+    font-size: 11px;
+  }
+
+  .network-line {
+    stroke: rgba(184,134,11,0.3);
+    stroke-width: 1.2;
+    fill: none;
+  }
+  .network-line.close {
+    stroke: rgba(184,134,11,0.55);
+    stroke-width: 1.8;
+  }
+  .network-line.enemy {
+    stroke: rgba(139,58,58,0.5);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 4;
+  }
+
+  .center-glow {
+    filter: drop-shadow(0 0 20px rgba(232,201,106,0.8)) drop-shadow(0 0 40px rgba(232,201,106,0.4));
+  }
+
+  /* ===== 视图二：星系时间线 ===== */
+  .galaxy-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 24px 80px;
+  }
+  .galaxy-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .star-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  .star-node .star-core {
+    transition: all 0.4s ease;
+    filter: drop-shadow(0 0 6px var(--star-glow));
+  }
+  .star-node:hover .star-core {
+    filter: drop-shadow(0 0 18px var(--star-glow)) drop-shadow(0 0 36px rgba(255,200,80,0.6));
+  }
+  .star-node.late .star-core {
+    filter: drop-shadow(0 0 6px rgba(232,138,138,0.8));
+  }
+  .star-node.late:hover .star-core {
+    filter: drop-shadow(0 0 18px rgba(232,138,138,0.9)) drop-shadow(0 0 36px rgba(220,80,80,0.6));
+  }
+  .star-node .star-year {
+    font-size: 13px;
+    font-weight: 700;
+    fill: #f5ecd7;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+  .star-node .star-title {
+    font-size: 11px;
+    fill: #9a8f82;
+    text-anchor: middle;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+  .star-node.late .star-year { fill: #e88a8a; }
+  .star-node.late .star-title { fill: #b47474; }
+
+  .galaxy-line {
+    stroke: rgba(184,134,11,0.22);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 8;
+    fill: none;
+  }
+
+  /* ===== 详情页 ===== */
+  .detail-content {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(184,134,11,0.4);
+    border-radius: 999px;
+    color: var(--gold);
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s;
+    backdrop-filter: blur(6px);
+    margin-bottom: 40px;
+  }
+  .back-btn:hover {
+    background: rgba(184,134,11,0.15);
+    border-color: var(--gold);
+    transform: translateX(-3px);
+  }
+
+  .d-year {
+    font-size: clamp(48px, 10vw, 84px);
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--gold);
+    text-shadow: 0 0 30px rgba(232,201,106,0.6), 0 0 60px rgba(232,201,106,0.3);
+    line-height: 1.1;
+    animation: glowIn 0.8s ease both;
+  }
+  .view-detail.late .d-year {
+    color: var(--crimson);
+    text-shadow: 0 0 30px rgba(232,138,138,0.6), 0 0 60px rgba(232,138,138,0.3);
+  }
+  @keyframes glowIn {
+    from { opacity: 0; filter: blur(8px); }
+    to { opacity: 1; filter: blur(0); }
+  }
+
+  .d-meta {
+    font-size: 14px;
+    color: var(--ink-light);
+    margin-top: 8px;
+    letter-spacing: 2px;
+  }
+
+  .d-title {
+    font-size: clamp(22px, 4vw, 32px);
+    font-weight: 400;
+    margin: 24px 0 8px;
+    letter-spacing: 3px;
+    color: #f5ecd7;
+    animation: fadeUp 0.7s ease 0.1s both;
+  }
+
+  .d-divider {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold-deep), transparent);
+    margin: 24px 0;
+    animation: fadeUp 0.7s ease 0.15s both;
+  }
+  .view-detail.late .d-divider {
+    background: linear-gradient(90deg, var(--crimson-deep), transparent);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .d-image {
+    margin: 28px 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid rgba(184,134,11,0.25);
+    background: rgba(0,0,0,0.3);
+    animation: fadeUp 0.7s ease 0.18s both;
+  }
+  .view-detail.late .d-image {
+    border-color: rgba(139,58,58,0.35);
+  }
+  .d-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .d-image .image-caption {
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.35);
+    font-size: 12px;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    text-align: center;
+    backdrop-filter: blur(6px);
+  }
+  .d-image .image-missing {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--ink-light);
+    font-size: 14px;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, rgba(184,134,11,0.1), rgba(139,58,58,0.08));
+  }
+
+  .d-story {
+    animation: fadeUp 0.7s ease 0.2s both;
+    margin-bottom: 8px;
+  }
+  .d-story p {
+    font-size: 16px;
+    margin-bottom: 18px;
+    color: #d8d2c4;
+    line-height: 2.1;
+  }
+  .d-story strong { color: var(--gold); }
+  .view-detail.late .d-story strong { color: var(--crimson); }
+
+  .d-story .story-ref {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    font-size: 13px;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    line-height: 1.9;
+  }
+  .d-story .story-ref strong {
+    color: var(--gold);
+    font-weight: 600;
+  }
+  .view-detail.late .d-story .story-ref strong {
+    color: var(--crimson);
+  }
+
+  .d-source-section {
+    margin-top: 36px;
+    animation: fadeUp 0.7s ease 0.25s both;
+  }
+  .d-source-section .section-label {
+    font-size: 14px;
+    color: var(--gold);
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(184,134,11,0.25);
+  }
+  .view-detail.late .d-source-section .section-label {
+    color: var(--crimson);
+    border-bottom-color: rgba(139,58,58,0.3);
+  }
+
+  .source-item {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+    backdrop-filter: blur(6px);
+  }
+  .source-item .source-quote {
+    font-size: 15px;
+    line-height: 2.2;
+    color: #f0e6d2;
+    letter-spacing: 0.5px;
+  }
+  .source-item .source-ref {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-light);
+    letter-spacing: 1px;
+    opacity: 0.85;
+  }
+  .source-item .source-ref::before {
+    content: "—— ";
+  }
+
+  .d-poem {
+    background: rgba(184,134,11,0.1);
+    border-left: 3px solid var(--gold-deep);
+    border-radius: 4px;
+    padding: 22px 26px;
+    margin: 24px 0;
+    backdrop-filter: blur(6px);
+    animation: fadeUp 0.7s ease 0.3s both;
+  }
+  .view-detail.late .d-poem {
+    background: rgba(139,58,58,0.13);
+    border-left-color: var(--crimson-deep);
+  }
+  .d-poem .poem-name {
+    font-size: 16px;
+    color: var(--gold);
+    margin-bottom: 4px;
+    letter-spacing: 2px;
+  }
+  .d-poem .poem-source {
+    font-size: 12px;
+    color: var(--ink-light);
+    margin-bottom: 14px;
+    letter-spacing: 1px;
+    opacity: 0.85;
+  }
+  .d-poem .poem-text {
+    font-size: 16px;
+    line-height: 2.4;
+    letter-spacing: 1px;
+    color: #f0e6d2;
+  }
+
+  .d-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    animation: fadeUp 0.7s ease 0.4s both;
+  }
+  .d-nav button {
+    flex: 1;
+    padding: 14px 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #d8d2c4;
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+  }
+  .d-nav button:hover:not(:disabled) {
+    background: rgba(184,134,11,0.12);
+    border-color: rgba(184,134,11,0.5);
+    color: var(--gold);
+  }
+  .d-nav button.next { text-align: right; }
+  .d-nav button .nav-label {
+    display: block;
+    font-size: 11px;
+    color: #6a6258;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .d-nav button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  /* ===== 卷轴开场 ===== */
+  #scrollIntro {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: #06080f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: opacity 1.2s ease;
+  }
+  #scrollIntro.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .scroll-paper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0;
+    height: 62vh;
+    max-height: 560px;
+    background:
+      linear-gradient(180deg,
+        #f5ecd7 0%,
+        #ede0c4 20%,
+        #f5ecd7 50%,
+        #ede0c4 80%,
+        #f5ecd7 100%);
+    box-shadow:
+      0 0 60px rgba(184,134,11,0.5),
+      0 0 120px rgba(184,134,11,0.25),
+      inset 0 0 80px rgba(139,58,58,0.15);
+    transition: width 2.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #scrollIntro.open .scroll-paper {
+    width: 78vw;
+    max-width: 900px;
+  }
+  /* ===== 卷轴词句底纹 ===== */
+.scroll-poems {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 62vh;
+  max-height: 560px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 30px 50px;
+  opacity: 0;
+  transition:
+    width 2.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 1.8s ease 2.2s;
+  z-index: 1;
+  pointer-events: none;
+}
+#scrollIntro.open .scroll-poems {
+  width: 78vw;
+  max-width: 900px;
+  opacity: 1;
+}
+
+/* 竖排词句列 */
+.poem-col {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: "Songti SC", "SimSun", "STKaiti", "KaiTi", "Noto Serif SC", serif;
+  font-size: clamp(14px, 1.4vw, 20px);
+  line-height: 1.4;
+  letter-spacing: 6px;
+  color: #3a2418;
+  font-style: italic;
+  font-weight: 500;
+  text-shadow:
+    0.5px 0.5px 0 rgba(58,36,24,0.4),
+    -0.3px -0.3px 0 rgba(58,36,24,0.2);
+  white-space: nowrap;
+  flex-shrink: 0;
+  /* 模拟行书笔锋：轻微倾斜 + 模糊 */
+  transform: skewY(-2deg);
+  filter: blur(1.5px);
+  opacity: 0.55;
+}
+
+/* 标题提升到词句之上，保持清晰 */
+.scroll-title {
+  z-index: 5;
+}
+
+/* 标题加一个柔和的暗角衬底，让文字更突出 */
+.title-main {
+  position: relative;
+}
+.title-main::before {
+  content: "";
+  position: absolute;
+  inset: -30px -60px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(245,236,215,0.85) 0%,
+    rgba(245,236,215,0.5) 40%,
+    rgba(245,236,215,0) 70%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+  .scroll-rod {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+  }
+  .scroll-rod-left {
+    left: 50%;
+    transition: left 2.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .scroll-rod-right {
+    right: 50%;
+    transition: right 2.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #scrollIntro.open .scroll-rod-left {
+    left: calc(50% - 39vw);
+  }
+  #scrollIntro.open .scroll-rod-right {
+    right: calc(50% - 39vw);
+  }
+  @media (max-width: 1150px) {
+    #scrollIntro.open .scroll-rod-left {
+      left: 11vw;
+    }
+    #scrollIntro.open .scroll-rod-right {
+      right: 11vw;
+    }
+  }
+
+  .rod-body {
+    width: 14px;
+    height: 68vh;
+    max-height: 620px;
+    background: linear-gradient(90deg,
+      #2a1c0a 0%,
+      #6b4a1a 30%,
+      #b8860b 50%,
+      #6b4a1a 70%,
+      #2a1c0a 100%);
+    border-radius: 7px;
+    box-shadow:
+      0 0 20px rgba(184,134,11,0.6),
+      0 0 40px rgba(184,134,11,0.3);
+  }
+  .rod-cap {
+    width: 26px;
+    height: 18px;
+    background: linear-gradient(90deg,
+      #2a1c0a 0%,
+      #8b6a1a 50%,
+      #2a1c0a 100%);
+    border-radius: 6px;
+    box-shadow: 0 0 12px rgba(184,134,11,0.7);
+  }
+  .rod-cap.top { margin-bottom: -3px; }
+  .rod-cap.bottom { margin-top: -3px; }
+
+  .scroll-title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1.2s ease 1.4s;
+    pointer-events: none;
+    z-index: 3;
+  }
+  #scrollIntro.open .scroll-title {
+    opacity: 1;
+  }
+
+  .title-main {
+    font-size: clamp(48px, 8vw, 84px);
+    font-weight: 400;
+    letter-spacing: 16px;
+    color: #2c1810;
+    text-shadow:
+      0 0 30px rgba(184,134,11,0.4),
+      2px 2px 0 rgba(184,134,11,0.2);
+    font-family: "Songti SC", "SimSun", "Noto Serif SC", serif;
+  }
+  .title-sub {
+    margin-top: 16px;
+    font-size: clamp(12px, 1.5vw, 16px);
+    letter-spacing: 8px;
+    color: #6b4a1a;
+    font-family: "Songti SC", "SimSun", "Noto Serif SC", serif;
+  }
+
+  @media (max-width: 640px) {
+    .network-container,
+    .galaxy-container { padding: 10px 12px 60px; }
+    .detail-content { padding: 28px 20px 60px; }
+    .d-nav { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== 卷轴开场 ===== -->
+<div id="scrollIntro">
+  <div class="scroll-paper"></div>
+  <div class="scroll-rod scroll-rod-left">
+    <div class="rod-cap top"></div>
+    <div class="rod-body"></div>
+    <div class="rod-cap bottom"></div>
+  </div>
+  <div class="scroll-rod scroll-rod-right">
+    <div class="rod-cap top"></div>
+    <div class="rod-body"></div>
+    <div class="rod-cap bottom"></div>
+  </div>
+  <!-- 卷轴上的词句底纹 -->
+<div class="scroll-poems" aria-hidden="true">
+  <div class="poem-col">春花秋月何时了 往事知多少</div>
+  <div class="poem-col">小楼昨夜又东风 故国不堪回首月明中</div>
+  <div class="poem-col">雕栏玉砌应犹在 只是朱颜改</div>
+  <div class="poem-col">问君能有几多愁 恰似一江春水向东流</div>
+  <div class="poem-col">无言独上西楼 月如钩</div>
+  <div class="poem-col">寂寞梧桐深院锁清秋</div>
+  <div class="poem-col">剪不断 理还乱 是离愁</div>
+  <div class="poem-col">别是一般滋味在心头</div>
+  <div class="poem-col">帘外雨潺潺 春意阑珊</div>
+  <div class="poem-col">罗衾不耐五更寒</div>
+  <div class="poem-col">梦里不知身是客 一晌贪欢</div>
+  <div class="poem-col">独自莫凭栏 无限江山</div>
+  <div class="poem-col">别时容易见时难</div>
+  <div class="poem-col">流水落花春去也 天上人间</div>
+  <div class="poem-col">四十年来家国 三千里地山河</div>
+  <div class="poem-col">凤阁龙楼连霄汉 玉树琼枝作烟萝</div>
+  <div class="poem-col">几曾识干戈</div>
+  <div class="poem-col">一旦归为臣虏 沈腰潘鬓消磨</div>
+  <div class="poem-col">最是仓皇辞庙日 教坊犹奏别离歌</div>
+  <div class="poem-col">垂泪对宫娥</div>
+  <div class="poem-col">晚妆初了明肌雪 春殿嫔娥鱼贯列</div>
+  <div class="poem-col">凤箫吹断水云闲 重按霓裳歌遍彻</div>
+  <div class="poem-col">临风谁更飘香屑 醉拍阑干情味切</div>
+  <div class="poem-col">归时休放烛花红 待踏马蹄清夜月</div>
+  <div class="poem-col">一重山 两重山</div>
+  <div class="poem-col">山远天高烟水寒 相思枫叶丹</div>
+  <div class="poem-col">菊花开 菊花残</div>
+  <div class="poem-col">塞雁高飞人未还 一帘风月闲</div>
+  <div class="poem-col">多少恨 昨夜梦魂中</div>
+  <div class="poem-col">还似旧时游上苑 车如流水马如龙</div>
+</div>
+  <div class="scroll-title">
+    <div class="title-main">李 煜</div>
+    <div class="title-sub">南 唐 后 主 · 千 古 词 帝</div>
+  </div>
+</div>
+
+<canvas class="starfield" id="starfield"></canvas>
+
+<!-- ===== 视图一：人物关系网 ===== -->
+<div class="view active" id="view-network">
+  <div class="page-header">
+    <h1>李 煜 人 物 关 系 网</h1>
+    <p>以李煜为核心 · 血缘 · 婚姻 · 君臣 · 敌友</p>
+    <span class="hint">点击星点，查看人物生平</span>
+  </div>
+  <div class="network-container">
+    <svg class="network-svg" viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg" id="networkSvg">
+      <g id="networkLines"></g>
+      <g id="networkNodes"></g>
+    </svg>
+  </div>
+</div>
+
+<!-- ===== 视图二：星系时间线 ===== -->
+<div class="view hidden" id="view-timeline">
+  <div class="page-header">
+    <h1>李 煜 一 生</h1>
+    <p>937 — 978 · 从帝王到囚徒 · 星系时间线</p>
+    <span class="hint">点击星点，进入那一年</span>
+  </div>
+  <div class="galaxy-container">
+    <svg class="galaxy-svg" viewBox="0 0 960 620" xmlns="http://www.w3.org/2000/svg" id="galaxySvg">
+      <g id="galaxyLines"></g>
+      <g id="galaxyNodes"></g>
+    </svg>
+  </div>
+</div>
+
+<!-- ===== 视图三：时间节点详情 ===== -->
+<div class="view hidden" id="view-detail">
+  <div class="detail-content">
+    <button class="back-btn" id="backBtn">← 返回星系</button>
+    <div class="d-year" id="dYear"></div>
+    <div class="d-meta" id="dMeta"></div>
+    <div class="d-title" id="dTitle"></div>
+    <div class="d-divider"></div>
+    <div class="d-image" id="dImage"></div>
+    <div class="d-story" id="dStory"></div>
+    <div class="d-source-section" id="dSourceSection">
+      <div class="section-label">史料原文</div>
+      <div id="dSources"></div>
+    </div>
+    <div id="dPoemContainer"></div>
+    <div class="d-nav">
+      <button id="prevBtn">
+        <span class="nav-label">上一个</span>
+        <span id="prevText">—</span>
+      </button>
+      <button class="next" id="nextBtn">
+        <span class="nav-label">下一个</span>
+        <span id="nextText">—</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 视图四：人物详情 ===== -->
+<div class="view hidden" id="view-person">
+  <div class="detail-content">
+    <button class="back-btn" id="backToNetworkBtn">← 返回关系网</button>
+    <div class="d-year" id="pName"></div>
+    <div class="d-meta" id="pRole"></div>
+    <div class="d-title" id="pTitle"></div>
+    <div class="d-divider"></div>
+    <div class="d-story" id="pStory"></div>
+    <div class="d-source-section" id="pSourceSection">
+      <div class="section-label">史料原文</div>
+      <div id="pSources"></div>
+    </div>
+    <div class="d-source-section" id="pRelationSection">
+      <div class="section-label">与李煜的关系</div>
+      <div class="d-story" id="pRelation"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= 卷轴开场 =================
+(function() {
+  const intro = document.getElementById('scrollIntro');
+
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      intro.classList.add('open');
+    }, 300);
+
+    setTimeout(() => {
+      intro.classList.add('fade-out');
+    }, 4500);
+
+    setTimeout(() => {
+      intro.remove();
+    }, 5800);
+  });
+})();
+
+// ================= 星空 Canvas =================
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [];
+let shootingStars = [];
+let animId = null;
+let running = false;
+
+const nebulas = [
+  { x: 0.25, y: 0.3, r: 0.35 },
+  { x: 0.75, y: 0.65, r: 0.4 },
+  { x: 0.5, y: 0.15, r: 0.25 }
+];
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  initStars();
+}
+
+function initStars() {
+  const count = Math.min(300, Math.floor(window.innerWidth * window.innerHeight / 5500));
+  stars = [];
+  for (let i = 0; i < count; i++) {
+    let x, y;
+    if (Math.random() < 0.5) {
+      const neb = nebulas[Math.floor(Math.random() * nebulas.length)];
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.pow(Math.random(), 2) * neb.r;
+      x = (neb.x + Math.cos(angle) * dist) * canvas.width;
+      y = (neb.y + Math.sin(angle) * dist) * canvas.height;
+    } else {
+      x = Math.random() * canvas.width;
+      y = Math.random() * canvas.height;
+    }
+    stars.push({
+      x, y,
+      r: Math.random() * 1.4 + 0.3,
+      baseAlpha: Math.random() * 0.5 + 0.3,
+      twinkleSpeed: Math.random() * 0.02 + 0.005,
+      phase: Math.random() * Math.PI * 2,
+      color: Math.random() < 0.12
+        ? (Math.random() < 0.5 ? '232,201,106' : '232,138,138')
+        : '255,255,255'
+    });
+  }
+}
+
+function spawnShootingStar() {
+  shootingStars.push({
+    x: Math.random() * canvas.width * 0.8,
+    y: Math.random() * canvas.height * 0.4,
+    vx: 6 + Math.random() * 5,
+    vy: 3 + Math.random() * 3,
+    life: 1,
+    len: 80 + Math.random() * 60
+  });
+}
+
+function draw(t) {
+  const grad = ctx.createRadialGradient(
+    canvas.width * 0.5, canvas.height * 0.4, 0,
+    canvas.width * 0.5, canvas.height * 0.4, Math.max(canvas.width, canvas.height) * 0.8
+  );
+  grad.addColorStop(0, '#0b1024');
+  grad.addColorStop(0.5, '#060a16');
+  grad.addColorStop(1, '#03050c');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (const s of stars) {
+    const twinkle = Math.sin(t * s.twinkleSpeed + s.phase) * 0.35 + 0.65;
+    const alpha = s.baseAlpha * twinkle;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${s.color},${alpha})`;
+    ctx.fill();
+    if (s.r > 1.1) {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r * 3, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${s.color},${alpha * 0.1})`;
+      ctx.fill();
+    }
+  }
+
+  for (let i = shootingStars.length - 1; i >= 0; i--) {
+    const m = shootingStars[i];
+    const tailX = m.x - m.vx * (m.len / 10);
+    const tailY = m.y - m.vy * (m.len / 10);
+    const g = ctx.createLinearGradient(m.x, m.y, tailX, tailY);
+    g.addColorStop(0, `rgba(255,240,200,${m.life})`);
+    g.addColorStop(1, 'rgba(255,240,200,0)');
+    ctx.beginPath();
+    ctx.moveTo(m.x, m.y);
+    ctx.lineTo(tailX, tailY);
+    ctx.strokeStyle = g;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(m.x, m.y, 2, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,250,230,${m.life})`;
+    ctx.fill();
+    m.x += m.vx;
+    m.y += m.vy;
+    m.life -= 0.012;
+    if (m.life <= 0 || m.x > canvas.width + 100 || m.y > canvas.height + 100) {
+      shootingStars.splice(i, 1);
+    }
+  }
+}
+
+function loop(t) {
+  if (!running) return;
+  draw(t * 0.06);
+  if (Math.random() < 0.008) spawnShootingStar();
+  animId = requestAnimationFrame(loop);
+}
+
+function startStarfield() {
+  if (running) return;
+  running = true;
+  resizeCanvas();
+  animId = requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', () => {
+  if (running) resizeCanvas();
+});
+
+startStarfield();
+
+// ================= 人物关系数据 =================
+const persons = [
+  {
+    id: 'liyu',
+    name: '李煜',
+    role: '南唐后主 · 词帝',
+    x: 500, y: 360,
+    center: true,
+    title: '词帝与囚徒',
+    story: `<p>李煜，字重光，初名从嘉，南唐元宗李璟第六子，南唐最后一位君主。他在位十五年，对宋廷卑躬屈膝，终究未能保住江山。975年金陵陷落，被俘至汴京，封"违命侯"，978年七夕被赐牵机药而死，年仅四十二岁。</p>
+    <p>作为帝王，他是彻底的失败者；作为词人，他登上了巅峰。王国维说："词至李后主而眼界始大，感慨遂深，遂变伶工之词为士大夫之词。"</p>`,
+    sources: [
+      { quote: "煜字重光，初名从嘉，景第六子也。煜为人仁孝，善属文，工书画。", ref: "《新五代史》卷六十二 · 南唐世家" }
+    ],
+    relation: ''
+  },
+  {
+    id: 'libian',
+    name: '李昪',
+    role: '祖父 · 南唐开国皇帝',
+    x: 220, y: 140,
+    title: '南唐烈祖',
+    story: `<p>李昪，字正伦，小字彭奴，南唐的建立者。他出身寒微，幼年丧父，被吴国权臣徐温收为养子，改名徐知诰。后逐渐掌握吴国大权，937年称帝，国号齐，后改唐，史称南唐。</p>
+    <p>他在位期间，保境安民，与邻国修好，南唐国力强盛，成为十国中最富庶的国家之一。943年去世，庙号烈祖。</p>`,
+    sources: [
+      { quote: "烈祖光文肃武孝高皇帝，名昪，字正伦，小字彭奴，徐州人。", ref: "《新五代史》卷六十二 · 南唐世家" }
+    ],
+    relation: `<p>李昪是李煜的祖父。李煜出生时，李昪已在位，南唐正处于鼎盛时期。李昪去世时李煜年仅七岁，祖父留下的基业，最终在孙子手中终结。</p>`
+  },
+  {
+    id: 'lijing',
+    name: '李璟',
+    role: '父亲 · 南唐元宗',
+    x: 380, y: 120,
+    title: '南唐元宗',
+    story: `<p>李璟，字伯玉，李昪长子，南唐第二位皇帝，史称南唐元宗。他雅好文学，词写得极好，著名句"细雨梦回鸡塞远，小楼吹彻玉笙寒"就出自他手。</p>
+    <p>但他在政治上远不如父亲。在位期间，南唐与后周作战失利，被迫去帝号、称国主，国力大损。961年去世，将烂摊子留给了儿子李煜。</p>`,
+    sources: [
+      { quote: "元宗明道崇德文宣孝皇帝，名璟，字伯玉，烈祖长子也。", ref: "《新五代史》卷六十二 · 南唐世家" }
+    ],
+    relation: `<p>李璟是李煜的父亲，也是他的文学启蒙者。李璟的词风对李煜影响深远，父子二人并称"南唐二主"，词作合辑为《南唐二主词》。李煜即位时，南唐已向北宋称臣，国势衰微，这一切都是父亲留下的遗产。</p>`
+  },
+  {
+    id: 'dazhouhou',
+    name: '大周后',
+    role: '妻子 · 昭惠国后',
+    x: 680, y: 160,
+    title: '昭惠国后周娥皇',
+    story: `<p>大周后，名娥皇，南唐名臣周宗之女。她精通音律，能歌善舞，尤擅琵琶。与李煜结婚后，夫妻二人琴瑟和鸣，共同考证补全了失传的《霓裳羽衣曲》。</p>
+    <p>964年病逝，年仅二十九岁。李煜悲痛欲绝，"哀苦骨立，杖而后起"。</p>`,
+    sources: [
+      { quote: "后主昭惠国后周氏，小名娥皇，司徒宗之女。通书史，善歌舞，尤工琵琶。", ref: "陆游《南唐书》卷十六 · 后妃诸王列传" }
+    ],
+    relation: `<p>大周后是李煜的第一任妻子，也是他一生中最重要的人之一。两人的结合不仅是婚姻，更是艺术上的知音。她去世后，李煜写下多首悼亡词，词风开始出现悲音。这段婚姻是李煜前期词作的主要灵感来源。</p>`
+  },
+  {
+    id: 'xiaozhouhou',
+    name: '小周后',
+    role: '妻子 · 继国后',
+    x: 720, y: 320,
+    title: '继国后周氏',
+    story: `<p>小周后，大周后之妹，名不详。姐姐病重期间入宫照顾，与李煜产生感情。968年被立为皇后。</p>
+    <p>她与姐姐一样美貌多才，李煜对她极为宠爱。南唐灭亡后，随李煜被俘至汴京。李煜被毒死后，她悲痛欲绝，不久也去世了。</p>`,
+    sources: [
+      { quote: "开宝元年，冬十一月，立国后周氏。", ref: "陆游《南唐书》卷三" }
+    ],
+    relation: `<p>小周后是李煜的第二任妻子。相传李煜曾为她写下"刬袜步香阶，手提金缕鞋"的句子。她陪伴李煜度过了南唐最后的时光，也见证了亡国与被俘的屈辱。</p>`
+  },
+  {
+    id: 'lihongji',
+    name: '李弘冀',
+    role: '长兄 · 原太子',
+    x: 260, y: 280,
+    title: '南唐太子',
+    story: `<p>李弘冀，李璟长子，李煜的长兄。他性格刚烈，有军事才能，曾被立为太子。据《十国春秋》记载，他曾毒杀自己的叔叔李景遂，手段狠辣。</p>
+    <p>但他英年早逝，死因成谜。他的去世，为李煜继承皇位铺平了道路。</p>`,
+    sources: [
+      { quote: "显德六年，太子弘冀病逝。", ref: "《十国春秋》卷十七" }
+    ],
+    relation: `<p>李弘冀是李煜的长兄。如果他没有早逝，李煜可能永远不会成为皇帝，也就不会有后来的"词帝"。他的死，是李煜人生转折的关键节点。</p>`
+  },
+  {
+    id: 'zhaokuangyin',
+    name: '赵匡胤',
+    role: '政敌 · 宋太祖',
+    x: 820, y: 440,
+    title: '宋太祖',
+    story: `<p>赵匡胤，北宋开国皇帝。他通过陈桥兵变黄袍加身，建立宋朝，随后南征北战，逐步统一中原。他有一句名言："卧榻之侧，岂容他人鼾睡。"</p>
+    <p>975年，宋军攻破金陵，南唐灭亡。赵匡胤封李煜为"违命侯"，将他俘虏至汴京。</p>`,
+    sources: [
+      { quote: "太祖启运立极英武睿文神德圣功至明大孝皇帝，姓赵氏，讳匡胤。", ref: "《宋史》卷一 · 太祖本纪" }
+    ],
+    relation: `<p>赵匡胤是李煜最大的政敌。他灭亡了南唐，俘虏了李煜。但赵匡胤并未杀李煜，而是封他为"违命侯"，让他苟活于汴京。李煜的囚居生活，从赵匡胤时代开始。</p>`
+  },
+  {
+    id: 'zhaoguangyi',
+    name: '赵光义',
+    role: '政敌 · 宋太宗',
+    x: 880, y: 200,
+    title: '宋太宗',
+    story: `<p>赵光义，赵匡胤之弟，北宋第二位皇帝。976年赵匡胤去世后即位，是为宋太宗。</p>
+    <p>他对李煜多有猜忌，据传对小周后也有不轨之心。978年七夕，他因李煜作《虞美人》而大怒，赐牵机药将其毒死。</p>`,
+    sources: [
+      { quote: "太宗至仁应道神功圣德文武睿烈大明广孝皇帝，讳炅，初名匡义，太祖同母弟也。", ref: "《宋史》卷四 · 太宗本纪" }
+    ],
+    relation: `<p>赵光义是李煜的终结者。他赐死了李煜，也终结了李煜的囚居生活。从某种角度说，正是他的毒药，成就了李煜"以血书者"的绝命词。</p>`
+  },
+  {
+    id: 'zhongmo',
+    name: '钟谟',
+    role: '政敌 · 南唐大臣',
+    x: 180, y: 440,
+    title: '南唐大臣',
+    story: `<p>钟谟，南唐大臣。李煜被立为太子时，他曾上疏反对，认为李从嘉"酷信佛教、懦弱少德"，不适合做太子，建议改立纪国公李从善。</p>
+    <p>李璟大怒，将钟谟流放到饶州。</p>`,
+    sources: [
+      { quote: "钟谟以李从嘉酷信佛教、懦弱少德，上疏请立纪国公李从善为太子。李璟大怒，流放钟谟至饶州。", ref: "《十国春秋》卷十七" }
+    ],
+    relation: `<p>钟谟是李煜的政敌之一。他反对李煜继位，认为李煜懦弱无能。历史证明他的判断是对的，但历史的走向没有因他改变。</p>`
+  },
+  {
+    id: 'licongshan',
+    name: '李从善',
+    role: '弟弟 · 纪国公',
+    x: 340, y: 520,
+    title: '纪国公',
+    story: `<p>李从善，李璟第七子，李煜的弟弟。曾被封为纪国公。钟谟曾建议立他为太子，但被李璟拒绝。</p>
+    <p>南唐灭亡后，李从善随李煜被俘至汴京，后去世。</p>`,
+    sources: [
+      { quote: "封李从嘉为吴王，以尚书令参与政事，入住东宫。", ref: "《十国春秋》卷十七" }
+    ],
+    relation: `<p>李从善是李煜的弟弟。他曾是皇位的有力竞争者，但最终未能继位。南唐灭亡后，兄弟二人一同被俘，命运相同。</p>`
+  }
+];
+
+// ================= 时间线数据 =================
+const events = [
+  {
+    year: 937, age: "1岁", title: "生于金陵", meta: "升元元年 · 金陵", late: false,
+    pos: { x: 140, y: 480 },
+    img: "image/01.png",
+    story: `<p>公元937年，南唐升元元年，七夕。</p>
+    <p>金陵城中的吴王府里，一个男婴在七夕的夜色中降生。他是南唐开国皇帝李昪的孙子、吴王李璟的第六个儿子，取名从嘉，字重光。</p>
+    <p>据《新五代史》记载，这个婴儿<strong>"丰额骈齿，一目重瞳"</strong>——额头宽阔饱满，牙齿重叠生长，一只眼睛里有两个瞳孔。在古代相术里，重瞳是圣人之相，上古的舜、楚霸王项羽都有此异相。这似乎预示着他不会是一个平凡的人，但没人能猜到，这份"不凡"最终会把他推向怎样的命运。</p>
+    <p>排行第六，按常理说，皇位与他无关。他的父亲李璟此时还是吴王，上面有太子李弘冀。李从嘉从小在宫廷中长大，享受着最好的教育，琴棋书画样样精通，尤爱填词。他给自己取了个雅号叫"莲峰居士"，向往的是山水田园，而非朝堂权谋。</p>
+    <p>近现代学者在解读李煜时，常会提到一个关键词：<strong>"错位"</strong>。他生于帝王之家，却长了一颗文人的心；他排行最末，却最终被推上了龙椅。余秋雨曾评价说："李煜做皇帝的糟糕程度，几乎是让人生气的。"但正是这种错位，造就了后来的千古词帝。</p>
+    <div class="story-ref">
+      <strong>学者解读</strong>：王国维在《人间词话》中说李煜"生于深宫之中，长于妇人之手，是后主为人君所短处，亦即为词人所长处"。他"阅世愈浅，则性情愈真"——正是因为从未真正涉足政治漩涡，他的词才保有一种纯粹的、赤子般的真诚。
+    </div>`,
+    sources: [
+      { quote: "煜字重光，初名从嘉，景第六子也。煜为人仁孝，善属文，工书画，而丰额骈齿，一目重瞳子。", ref: "《新五代史》卷六十二 · 南唐世家" },
+      { quote: "广额丰颊，骈齿，一目重瞳子。", ref: "《十国春秋》卷十七" }
+    ],
+    poem: null
+  },
+  {
+    year: 943, age: "7岁", title: "祖父李昪去世，父亲李璟即位", meta: "保大元年", late: false,
+    pos: { x: 240, y: 340 },
+    img: "image/02.png",
+    story: `<p>这一年，李从嘉七岁。他的祖父、南唐开国皇帝<strong>李昪</strong>去世了。</p>
+    <p>李昪是南唐的建立者，从一个孤儿奋斗到一方霸主，在五代十国的乱世中为南唐打下了基业。他的去世，标志着一个时代的结束。李从嘉的父亲、吴王<strong>李璟</strong>继位，是为南唐元宗。</p>
+    <p>李璟与他的父亲截然不同。李昪是铁腕君主，李璟却是一个不折不扣的文人。他的词写得极好，那首<strong>"细雨梦回鸡塞远，小楼吹彻玉笙寒"</strong>，至今仍被传诵。李璟即位后，南唐的文化气息更浓了，但军事和国力却在悄悄衰退。</p>
+    <p>对于一个七岁的孩子来说，祖父的去世可能只是模糊的记忆。但父亲的继位，意味着宫廷氛围的转变。李璟对文学的热爱、对宫廷生活的沉迷，潜移默化地塑造着年幼的李从嘉。他后来那些描写宫廷宴乐、歌舞升平的词作，源头就在这里。</p>
+    <p>不过，李璟留给儿子的，不仅是一个文化昌盛的南唐，更是一个危机四伏的烂摊子。他在位期间，南唐与后周的战争失利，被迫去帝号、称国主，国力大损。这个烂摊子，二十年后将由李从嘉来接手。</p>`,
+    sources: [
+      { quote: "元宗明道崇德文宣孝皇帝，名璟，字伯玉，烈祖长子也。", ref: "《新五代史》卷六十二 · 南唐世家" }
+    ],
+    poem: null
+  },
+  {
+    year: 950, age: "14岁", title: "娶大周后娥皇", meta: "约此年前后", late: false,
+    pos: { x: 380, y: 260 },
+    img: "image/03.png",
+    story: `<p>大约在这一年，十四岁的李从嘉迎娶了<strong>大周后周娥皇</strong>。</p>
+    <p>娥皇是南唐名臣周宗的女儿，与李从嘉同龄。她不仅容貌出众，更是一个艺术天才——精通音律，能歌善舞，尤其擅长琵琶。在那个年代，一个精通音律的女子嫁给一个痴迷词曲的皇子，简直是天作之合。</p>
+    <p>关于他们的婚姻，有一个广为流传的故事。当时《霓裳羽衣曲》已经失传，只剩下残谱。李从嘉得到残谱后，与娥皇一起考证补全，用琵琶重新演奏出来。陆游在《南唐书》中记载：<strong>"后得残谱以琵琶奏之，于是开元天宝之遗音复传于世。"</strong> 一千年后，我们仍能想象那个场景：年轻的夫妻在宫灯下对坐，一个拨弦，一个吟唱，把盛唐的声音从废墟中打捞出来。</p>
+    <p>这段婚姻是李从嘉一生中最幸福的时光。他前期那些富丽明快的词作，大多诞生于这个时期。比如那首《玉楼春》：<strong>"晚妆初了明肌雪，春殿嫔娥鱼贯列。凤箫吹断水云闲，重按霓裳歌遍彻。"</strong> 字里行间全是青春的欢愉和宫廷的奢丽。</p>
+    <p>但学者们也注意到，这种幸福是"温室中的幸福"。李煜从未真正经历过外面的风浪，他的世界只有宫廷、艺术和爱情。这种"阅世愈浅"的生活，让他的词保持了"赤子之心"，但也让他对即将到来的危机毫无准备。</p>`,
+    sources: [
+      { quote: "后主昭惠国后周氏，小名娥皇，司徒宗之女。通书史，善歌舞，尤工琵琶。", ref: "陆游《南唐书》卷十六 · 后妃诸王列传" },
+      { quote: "故唐盛时霓裳羽衣，最为大曲，乱离之后，绝不复传，后得残谱以琵琶奏之，于是开元天宝之遗音复传于世。", ref: "陆游《南唐书》卷十六" }
+    ],
+    poem: null
+  },
+  {
+    year: 958, age: "22岁", title: "被立为太子", meta: "中兴元年", late: false,
+    pos: { x: 540, y: 220 },
+    img: "image/04.png",
+    story: `<p>这一年，李从嘉被立为<strong>太子</strong>，入住东宫。他改名李煜，字重光。</p>
+    <p>这个太子之位，原本轮不到他。他排行第六，前面有五位兄长。按照"立长立嫡"的规矩，皇位与他毫无关系。但命运偏偏开了个残酷的玩笑——他的几位兄长先后去世了。</p>
+    <p>最先去世的是太子李弘冀。据《十国春秋》记载，李弘冀是一个性格刚烈的人，曾毒杀自己的叔叔李景遂，手段狠辣。但他也暴毙而亡，死因成谜。随后，李煜剩下的几个兄长也陆续离世。到最后，这个最不想当皇帝的"老六"，成了唯一的继承人。</p>
+    <p>关于李煜被立为太子，还有一个插曲。大臣钟谟曾上疏反对，认为李从嘉"酷信佛教、懦弱少德"，不适合做太子，建议改立纪国公李从善。李璟大怒，将钟谟流放到饶州，然后正式册封李从嘉为吴王、太子。</p>
+    <p>李煜其实<strong>并不想当皇帝</strong>。他自号"钟隐""莲峰居士"，写诗作画，向往隐居生活。余秋雨在分析李煜时指出，他是一个"非典型"的帝王——没有野心，没有权谋，甚至没有准备好。但命运没有给他选择的机会。一个文艺青年，就这样被推向了历史的风口浪尖。</p>`,
+    sources: [
+      { quote: "显德六年，太子弘冀病逝，钟谟以李从嘉酷信佛教、懦弱少德，上疏请立纪国公李从善为太子。李璟大怒，流放钟谟至饶州，封李从嘉为吴王，以尚书令参与政事，入住东宫。", ref: "《十国春秋》卷十七" }
+    ],
+    poem: null
+  },
+  {
+    year: 961, age: "25岁", title: "即位，成为南唐后主", meta: "建隆二年 · 金陵", late: false,
+    pos: { x: 680, y: 200 },
+    img: "image/05.png",
+    story: `<p>父亲李璟去世，二十五岁的李煜在金陵<strong>即位</strong>，成为南唐最后一位君主，史称<strong>"李后主"</strong>。</p>
+    <p>他接手的，是一个什么样的国家？南唐已经向北宋称臣多年，每年进贡大量金帛珠宝。李煜即位后，继续对宋廷卑躬屈膝，以求一时安宁。他在位十五年，表面维持着太平，实际上每一天都在胆战心惊中度过。</p>
+    <p>但李煜毕竟不是一个称职的君主。他对政务兴趣寥寥，却对诗词、音乐、书画痴迷不已。据记载，他曾在宫中用红白锦罗百匹装设天河月宫的形状，歌舞达旦。他还曾想用金鸡纳霜来延缓衰老，对养生颇有研究。</p>
+    <p>近现代学者对李煜的"帝王生涯"有一个共识：<strong>他不是暴君，只是一个无能的君主</strong>。陆游在《南唐书·后主本纪》中用了一句评语："虽仁爱足以感其遗民，而卒不能保社稷。"——他心地仁善，能让百姓感念，却终究保不住江山。</p>
+    <p>这一年，顾闳中奉命潜入韩熙载府邸，画下了那幅传世名作《韩熙载夜宴图》。李煜派画家去"监视"一个可能有不臣之心的臣子，却不知自己日后也会成为被监视、被猜忌的那个人。命运的讽刺，莫过于此。</p>`,
+    sources: [
+      { quote: "建隆二年，景迁南都，立煜为太子，留监国。", ref: "《新五代史》卷六十二 · 南唐世家" }
+    ],
+    poem: {
+      name: "《玉楼春》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》",
+      text: "晚妆初了明肌雪，春殿嫔娥鱼贯列。\n凤箫吹断水云闲，重按霓裳歌遍彻。\n临风谁更飘香屑，醉拍阑干情味切。\n归时休放烛花红，待踏马蹄清夜月。"
+    }
+  },
+  {
+    year: 964, age: "28岁", title: "大周后病逝", meta: "乾德二年", late: false,
+    pos: { x: 800, y: 260 },
+    img: "image/06.png",
+    story: `<p>李煜的妻子<strong>大周后娥皇病逝</strong>，年仅二十九岁。</p>
+    <p>娥皇病重期间，她最疼爱的幼子仲宣意外夭折。据陆游记载，娥皇得知儿子死讯后，"悲哀不自胜"，病情急剧恶化。李煜日夜守在她身边，亲自喂药，但终究无力回天。</p>
+    <p>娥皇去世后，李煜<strong>"哀苦骨立，杖而后起"</strong>——瘦得站都站不住，要拄着拐杖才能起身。他写下多首悼亡词，其中《昭惠周后诔》字字血泪："苍苍何辜，歼予伉俪；绝艳易凋，连城易脆。"</p>
+    <p>这段经历对李煜的打击是巨大的。有学者指出，大周后的去世，是他人生中第一次真正面对"失去"。在此之前，他的世界是完满的：有爱情，有艺术，有宫廷的繁华。但死亡让他意识到，一切都会消逝。这种感悟，开始渗透进他的词作中，前期那种纯粹的欢愉渐渐褪色，悲音开始浮现。</p>
+    <p>也正是在娥皇病重期间，她的妹妹（后来的小周后）入宫照顾姐姐，与李煜产生了感情。这件事在当时和后世都引发了争议。陆游在《南唐书》中记载，娥皇曾"恚怒，至死面不外向"——至死都不愿再看李煜一眼。这种情感纠葛，也是李煜人生中无法回避的一面。</p>`,
+    sources: [
+      { quote: "后疾革，煜哀苦骨立，杖而后起。", ref: "陆游《南唐书》卷十六 · 后妃诸王列传" },
+      { quote: "苍苍何辜，歼予伉俪；绝艳易凋，连城易脆。", ref: "李煜《昭惠周后诔》" }
+    ],
+    poem: null
+  },
+  {
+    year: 968, age: "32岁", title: "立小周后为后", meta: "乾德六年", late: false,
+    pos: { x: 860, y: 400 },
+    img: "image/07.png",
+    story: `<p>李煜立<strong>小周后</strong>（娥皇之妹）为皇后，时年三十二岁。</p>
+    <p>小周后与姐姐一样美貌多才，李煜对她极为宠爱。相传他曾为小周后写下<strong>"刬袜步香阶，手提金缕鞋"</strong>这样的句子，写她深夜悄悄来相会的情景——穿着袜子走在香阶上，手里提着金缕鞋，生怕发出声响。这种细腻的描写，既展现了他的词才，也透露出他性格中那种温柔、多情、甚至有些沉溺的特质。</p>
+    <p>但这段温柔时光的背后，是越来越紧迫的危机。此时南唐的国势已经危在旦夕，北宋的军事压力越来越大。赵匡胤"卧榻之侧，岂容他人鼾睡"的决心已定，南唐的灭亡只是时间问题。</p>
+    <p>学者们对李煜在这个时期的表现有不同的解读。有人认为他是在逃避现实，用爱情和艺术来麻痹自己。也有人认为，他其实清楚结局，只是无力改变。赵晓岚在《赵晓岚说李煜》中指出，李煜的"荒唐"是一种无奈的选择——他知道自己不是治国的材料，索性把自己交给命运。</p>
+    <p>无论如何，这段时光是他作为君主最后的温柔。三年后，一切都将被战火吞噬。</p>`,
+    sources: [
+      { quote: "开宝元年，始议立后为继室，命太常博士陈致雍，考古今沿革，草具婚礼。", ref: "陆游《南唐书》卷十六" },
+      { quote: "开宝元年，冬十一月，立国后周氏。", ref: "陆游《南唐书》卷三" }
+    ],
+    poem: null
+  },
+  {
+    year: 975, age: "39岁", title: "金陵陷落，被俘北上", meta: "开宝八年 · 人生转折", late: true,
+    pos: { x: 760, y: 520 },
+    img: "image/08.png",
+    story: `<p>宋军攻破<strong>金陵</strong>，南唐灭亡。李煜<strong>被俘</strong>，押送北宋都城汴京。</p>
+    <p>城破之时，李煜正在宫中，与小周后相对而泣。据记载，他本欲殉国，甚至准备好了自焚，但最终没有勇气自尽，选择出降。宋太祖赵匡胤封他为<strong>"违命侯"</strong>——这个封号本身就是一种羞辱：你曾经违抗我的命令，现在我让你活着，但你是我的囚徒。</p>
+    <p>投降的场面极为屈辱。李煜上身裸露，跪下来接受宋军对首都的占领。然后坐着船，在雨天北行，到汴京（今开封）。在那里，赵匡胤举行了隆重的受降仪式。李煜带来的所有大臣、官员全部穿上白衣服，慢慢朝着受降台走去，齐齐下跪。赵匡胤以高姿态说："我们现在终于走到了一起。"</p>
+    <p>从帝王到囚徒，<strong>"天堂地狱般的落差"</strong>彻底改变了李煜。这一年，成为他人生与词风的分水岭。在此之前的词，是"伶工之词"；在此之后的词，是"士大夫之词"。</p>
+    <p>王国维评价李煜的词"真所谓以血书者也"——他的后期作品，每一句都是用血泪写成的。这种从云端跌落的痛苦，反而成就了他在文学上的巅峰。</p>`,
+    sources: [
+      { quote: "八年冬，城陷，曹彬等驻兵于宫门，煜率其近臣迎拜于门。彬等上露布，以煜并其宰相汤悦等四十五人上献。", ref: "《宋史》卷四百七十八 · 南唐李氏世家" },
+      { quote: "开宝八年十二月，王师克金陵。", ref: "《新五代史》卷六十二" }
+    ],
+    poem: {
+      name: "《破阵子》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》",
+      text: "四十年来家国，三千里地山河。\n凤阁龙楼连霄汉，玉树琼枝作烟萝，几曾识干戈？\n一旦归为臣虏，沈腰潘鬓消磨。\n最是仓皇辞庙日，教坊犹奏别离歌，垂泪对宫娥。"
+    }
+  },
+  {
+    year: 976, age: "40岁", title: "囚居汴京，词作巅峰", meta: "开宝九年", late: true,
+    pos: { x: 580, y: 560 },
+    img: "image/09.png",
+    story: `<p>李煜在汴京过着<strong>囚徒生活</strong>，被封"违命侯"，行动受到监视，精神上极为痛苦。</p>
+    <p>这一年，宋太祖赵匡胤去世，其弟赵光义即位，是为宋太宗。李煜的处境更加艰难——太宗对他多有猜忌，甚至据说对小周后也有不轨之心。李煜的囚居生活，从"被冷落"变成了"被羞辱"。</p>
+    <p>也正是在这段最黑暗的岁月里，李煜写出了他一生中<strong>最伟大的作品</strong>。亡国之痛、故国之思、身世之悲，全部倾注在词中。他不再是那个写"晚妆初了明肌雪"的风流才子，而是一个用血泪写字的囚徒。</p>
+    <p>《相见欢》《浪淘沙令》《虞美人》——这些词写尽了一个失去一切的的人内心最深处的痛。叶嘉莹先生曾评价李煜的词有一个核心特质：<strong>"纯真无伪饰"</strong>。她说中国历代诗人中，最能以真纯本色与世人相见的，一个是陶渊明，另一个就是李煜。陶渊明的"真"是哲理了悟的智慧，而李煜的"真"是<strong>"全无理智与反省的纯情性的真"</strong>。</p>
+    <p>这种"真"，让他的词具有了超越时代的力量。一千多年后，当我们读到"剪不断，理还乱，是离愁"，依然能感受到那种无法言说的痛苦。</p>`,
+    sources: [
+      { quote: "后主封违命侯，后封妃。", ref: "《江南野史》卷三" }
+    ],
+    poem: {
+      name: "《相见欢》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》",
+      text: "无言独上西楼，月如钩。\n寂寞梧桐深院锁清秋。\n剪不断，理还乱，是离愁。\n别是一般滋味在心头。"
+    }
+  },
+  {
+    year: 978, age: "42岁", title: "七夕被毒，含恨而终", meta: "太平兴国三年 · 绝命之词", late: true,
+    pos: { x: 400, y: 480 },
+    img: "image/10.png",
+    story: `<p>公元978年<strong>七夕</strong>，李煜的四十二岁生日。他在汴京寓所命故妓唱《虞美人》，声闻于外。</p>
+    <p>宋太宗赵光义闻之大怒。一个阶下囚，居然还敢怀念故国，还敢唱"故国不堪回首月明中"？据宋代王铚《默记》记载，太宗遂赐<strong>牵机药</strong>。李煜服后全身抽搐，头足相就如牵机状，痛苦而死，年仅四十二岁。</p>
+    <p>这首《虞美人》，成了他的绝命词。<strong>"春花秋月何时了，往事知多少？小楼昨夜又东风，故国不堪回首月明中。雕栏玉砌应犹在，只是朱颜改。问君能有几多愁？恰似一江春水向东流。"</strong></p>
+    <p>他死之后，小周后悲痛欲绝，不久也去世了。宋太宗追赠他为太师、吴王，辍朝三日，但这一切对于一个已经死去的人来说，毫无意义。</p>
+    <p>作为帝王，李煜是彻底的失败者。但作为词人，他用生命的代价换来了词的巅峰。王国维说：<strong>"词至李后主而眼界始大，感慨遂深，遂变伶工之词为士大夫之词。"</strong> 余秋雨则评价说，李煜把词从民间演唱上升到了士大夫的艺术等级，"在他之后，这种文学体裁可以无愧地与楚辞、汉赋、唐诗比肩了"。</p>
+    <p>一千多年过去了，南唐的宫殿早已化作尘土，但那个在七夕之夜被毒死的囚徒，用他的词，为自己在文学史上刻下了不朽的名字。</p>`,
+    sources: [
+      { quote: "太平兴国三年，后主殂，后悲哀不自胜，亦卒。", ref: "陆游《南唐书》卷十六" },
+      { quote: "太平兴国三年六月辛卯殂，年四十二。是日，七夕也，后主盖以是日生。", ref: "陆游《南唐书》卷三" }
+    ],
+    poem: {
+      name: "《虞美人》",
+      source: "李煜 · 南唐 · 出自《南唐二主词》· 绝命词",
+      text: "春花秋月何时了，往事知多少？\n小楼昨夜又东风，故国不堪回首月明中。\n雕栏玉砌应犹在，只是朱颜改。\n问君能有几多愁？恰似一江春水向东流。"
+    }
+  }
+];
+
+// ================= 渲染人物关系网 =================
+const networkLines = document.getElementById('networkLines');
+const networkNodes = document.getElementById('networkNodes');
+
+// 绘制连线
+persons.forEach(p => {
+  if (p.id === 'liyu') return;
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', 500);
+  line.setAttribute('y1', 360);
+  line.setAttribute('x2', p.x);
+  line.setAttribute('y2', p.y);
+  line.setAttribute('class', 'network-line' + 
+    (['dazhouhou', 'xiaozhouhou', 'lijing', 'libian'].includes(p.id) ? ' close' : '') +
+    (['zhaokuangyin', 'zhaoguangyi', 'zhongmo'].includes(p.id) ? ' enemy' : '')
+  );
+  networkLines.appendChild(line);
+});
+
+// 绘制节点
+persons.forEach(p => {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'person-node' + (p.center ? ' center' : ''));
+  g.setAttribute('transform', `translate(${p.x}, ${p.y})`);
+
+  const r = p.center ? 32 : 22;
+
+  if (p.center) {
+    const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    glow.setAttribute('r', r * 2);
+    glow.setAttribute('fill', 'none');
+    glow.setAttribute('stroke', 'rgba(232,201,106,0.2)');
+    glow.setAttribute('stroke-width', '1');
+    g.appendChild(glow);
+  }
+
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('class', 'person-circle');
+  circle.setAttribute('r', r);
+  circle.setAttribute('fill', p.center ? '#e8c96a' : 'rgba(20,26,42,0.9)');
+  circle.setAttribute('stroke', p.center ? '#fff8e0' : 
+    (['zhaokuangyin', 'zhaoguangyi', 'zhongmo'].includes(p.id) ? '#8b3a3a' : '#b8860b'));
+  circle.setAttribute('stroke-width', '2');
+  if (p.center) circle.setAttribute('class', 'person-circle center-glow');
+  g.appendChild(circle);
+
+  const name = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  name.setAttribute('class', 'person-name');
+  name.setAttribute('y', 2);
+  name.textContent = p.name;
+  g.appendChild(name);
+
+  const role = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  role.setAttribute('class', 'person-role');
+  role.setAttribute('y', r + 16);
+  role.textContent = p.role;
+  g.appendChild(role);
+
+  if (p.id === 'liyu') {
+    g.addEventListener('click', () => showView(viewTimeline));
+  } else {
+    g.addEventListener('click', () => showPerson(p.id));
+  }
+  networkNodes.appendChild(g);
+});
+
+// ================= 渲染星系时间线 =================
+const galaxyLines = document.getElementById('galaxyLines');
+const galaxyNodes = document.getElementById('galaxyNodes');
+
+for (let i = 0; i < events.length - 1; i++) {
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', events[i].pos.x);
+  line.setAttribute('y1', events[i].pos.y);
+  line.setAttribute('x2', events[i + 1].pos.x);
+  line.setAttribute('y2', events[i + 1].pos.y);
+  line.setAttribute('class', 'galaxy-line');
+  galaxyLines.appendChild(line);
+}
+
+events.forEach((ev, i) => {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'star-node' + (ev.late ? ' late' : ''));
+  g.setAttribute('transform', `translate(${ev.pos.x}, ${ev.pos.y})`);
+
+  const size = [6, 6.5, 5.5, 5, 7, 6.5, 6, 7, 6.5, 7.5][i] || 6;
+
+  const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  glow.setAttribute('r', size * 3.5);
+  glow.setAttribute('fill', 'none');
+  glow.setAttribute('stroke', ev.late ? 'rgba(232,138,138,0.15)' : 'rgba(232,201,106,0.15)');
+  glow.setAttribute('stroke-width', '1');
+  g.appendChild(glow);
+
+  const core = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  core.setAttribute('class', 'star-core');
+  core.setAttribute('r', size);
+  core.setAttribute('fill', ev.late ? '#e88a8a' : '#e8c96a');
+  g.appendChild(core);
+
+  const yearText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  yearText.setAttribute('class', 'star-year');
+  yearText.setAttribute('y', size + 18);
+  yearText.textContent = ev.year;
+  g.appendChild(yearText);
+
+  const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  titleText.setAttribute('class', 'star-title');
+  titleText.setAttribute('y', size + 34);
+  titleText.textContent = ev.title.length > 8 ? ev.title.slice(0, 7) + '…' : ev.title;
+  g.appendChild(titleText);
+
+  g.addEventListener('click', () => showDetail(i));
+  galaxyNodes.appendChild(g);
+});
+
+// ================= 视图切换 =================
+const viewNetwork = document.getElementById('view-network');
+const viewTimeline = document.getElementById('view-timeline');
+const viewDetail = document.getElementById('view-detail');
+const viewPerson = document.getElementById('view-person');
+
+function hideAll() {
+  [viewNetwork, viewTimeline, viewDetail, viewPerson].forEach(v => {
+    v.classList.remove('active');
+    v.classList.add('hidden');
+  });
+}
+
+function showView(view) {
+  hideAll();
+  view.classList.remove('hidden');
+  view.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// 时间节点详情
+let currentIndex = -1;
+
+function showDetail(index) {
+  if (index < 0 || index >= events.length) return;
+  currentIndex = index;
+  const ev = events[index];
+
+  document.getElementById('dYear').textContent = ev.year;
+  document.getElementById('dMeta').textContent = ev.meta + ' · 时年' + ev.age;
+  document.getElementById('dTitle').textContent = ev.title;
+
+  const imageContainer = document.getElementById('dImage');
+  if (ev.img) {
+    imageContainer.innerHTML = `
+      <img src="${ev.img}" alt="${ev.year}年 · ${ev.title}"
+           onerror="this.parentElement.innerHTML='<div class=\\'image-missing\\'>图片未找到：${ev.img}<br><span style=\\'font-size:12px;opacity:0.6;\\'>请确认 image 文件夹与网页在同一目录</span></div>'">
+      <div class="image-caption">${ev.year}年 · ${ev.title}</div>
+    `;
+    imageContainer.style.display = 'block';
+  } else {
+    imageContainer.style.display = 'none';
+  }
+
+  document.getElementById('dStory').innerHTML = ev.story;
+
+  const sourcesContainer = document.getElementById('dSources');
+  if (ev.sources && ev.sources.length > 0) {
+    sourcesContainer.innerHTML = ev.sources.map(s => `
+      <div class="source-item">
+        <div class="source-quote">${s.quote}</div>
+        <div class="source-ref">${s.ref}</div>
+      </div>
+    `).join('');
+    document.getElementById('dSourceSection').style.display = 'block';
+  } else {
+    document.getElementById('dSourceSection').style.display = 'none';
+  }
+
+  const poemContainer = document.getElementById('dPoemContainer');
+  if (ev.poem) {
+    poemContainer.innerHTML = `
+      <div class="d-poem">
+        <div class="poem-name">${ev.poem.name}</div>
+        <div class="poem-source">${ev.poem.source}</div>
+        <div class="poem-text">${ev.poem.text.replace(/\n/g, '<br>')}</div>
+      </div>`;
+  } else {
+    poemContainer.innerHTML = '';
+  }
+
+  viewDetail.classList.toggle('late', !!ev.late);
+
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const prevText = document.getElementById('prevText');
+  const nextText = document.getElementById('nextText');
+
+  if (index > 0) {
+    prevBtn.disabled = false;
+    prevText.textContent = events[index - 1].year + ' · ' + events[index - 1].title;
+  } else {
+    prevBtn.disabled = true;
+    prevText.textContent = '已是起点';
+  }
+
+  if (index < events.length - 1) {
+    nextBtn.disabled = false;
+    nextText.textContent = events[index + 1].year + ' · ' + events[index + 1].title;
+  } else {
+    nextBtn.disabled = true;
+    nextText.textContent = '已是终点';
+  }
+
+  showView(viewDetail);
+}
+
+function backToTimeline() {
+  showView(viewTimeline);
+}
+
+function showPerson(id) {
+  const p = persons.find(x => x.id === id);
+  if (!p) return;
+
+  document.getElementById('pName').textContent = p.name;
+  document.getElementById('pRole').textContent = p.role;
+  document.getElementById('pTitle').textContent = p.title;
+  document.getElementById('pStory').innerHTML = p.story;
+
+  const pSources = document.getElementById('pSources');
+  if (p.sources && p.sources.length > 0) {
+    pSources.innerHTML = p.sources.map(s => `
+      <div class="source-item">
+        <div class="source-quote">${s.quote}</div>
+        <div class="source-ref">${s.ref}</div>
+      </div>
+    `).join('');
+    document.getElementById('pSourceSection').style.display = 'block';
+  } else {
+    document.getElementById('pSourceSection').style.display = 'none';
+  }
+
+  const pRelation = document.getElementById('pRelation');
+  if (p.relation) {
+    pRelation.innerHTML = p.relation;
+    document.getElementById('pRelationSection').style.display = 'block';
+  } else {
+    document.getElementById('pRelationSection').style.display = 'none';
+  }
+
+  showView(viewPerson);
+}
+
+function backToNetwork() {
+  showView(viewNetwork);
+}
+
+document.getElementById('backBtn').addEventListener('click', backToTimeline);
+document.getElementById('backToNetworkBtn').addEventListener('click', backToNetwork);
+document.getElementById('prevBtn').addEventListener('click', () => {
+  if (currentIndex > 0) showDetail(currentIndex - 1);
+});
+document.getElementById('nextBtn').addEventListener('click', () => {
+  if (currentIndex < events.length - 1) showDetail(currentIndex + 1);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (viewDetail.classList.contains('active')) backToTimeline();
+    else if (viewPerson.classList.contains('active')) backToNetwork();
+  }
+});
+</script>
+
+</body>
+</html>
